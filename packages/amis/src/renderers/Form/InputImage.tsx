@@ -14,11 +14,13 @@ import {FileRejection, ErrorCode, DropEvent} from 'react-dropzone';
 import 'blueimp-canvastoblob';
 import find from 'lodash/find';
 import {Payload, ActionObject} from 'amis-core';
-import {buildApi,
+import {
+  buildApi,
   isEffectiveApi,
   normalizeApi,
   isApiOutdated,
-  isApiOutdatedWithData} from 'amis-core';
+  isApiOutdatedWithData
+} from 'amis-core';
 import {createObject, qsstringify, guid, isEmpty, qsparse} from 'amis-core';
 import {Icon, TooltipWrapper, Button} from 'amis-ui';
 import accepts from 'attr-accept';
@@ -1434,6 +1436,36 @@ export default class ImageControl extends React.Component<
     );
   }
 
+  getThemeConfigStyle(props: any) {
+    return [
+      {
+        key: 'inputImageControlClassName',
+        value: props.inputImageControlClassName
+      },
+      {
+        key: 'iconControlClassName',
+        value: props.iconControlClassName,
+        weights: {
+          default: {
+            suf: ' svg'
+          }
+        }
+      },
+      {
+        key: 'addBtnControlClassName',
+        value: props.addBtnControlClassName,
+        weights: {
+          hover: {
+            suf: ':not(:disabled):not(.is-disabled)'
+          },
+          active: {
+            suf: ':not(:disabled):not(.is-disabled)'
+          }
+        }
+      }
+    ];
+  }
+
   render() {
     const {
       className,
@@ -1461,51 +1493,7 @@ export default class ImageControl extends React.Component<
       translate: __
     } = this.props;
 
-    insertCustomStyle(
-      themeCss,
-      [
-        {
-          key: 'inputImageControlClassName',
-          value: inputImageControlClassName
-        }
-      ],
-      id
-    );
-
-    insertCustomStyle(
-      themeCss,
-      [
-        {
-          key: 'addBtnControlClassName',
-          value: addBtnControlClassName,
-          weights: {
-            hover: {
-              suf: ':not(:disabled):not(.is-disabled)'
-            },
-            active: {
-              suf: ':not(:disabled):not(.is-disabled)'
-            }
-          }
-        }
-      ],
-      id + '-addOn'
-    );
-
-    insertCustomStyle(
-      themeCss,
-      [
-        {
-          key: 'iconControlClassName',
-          value: iconControlClassName,
-          weights: {
-            default: {
-              suf: ' svg'
-            }
-          }
-        }
-      ],
-      id + '-icon'
-    );
+    insertCustomStyle(themeCss, this.getThemeConfigStyle(this.props), id);
 
     const {
       files,
@@ -1923,11 +1911,11 @@ export default class ImageControl extends React.Component<
       props.data,
       prevProps.data
     ) ||
-    isApiOutdatedWithData(
-      props.receiver,
-      prevProps.receiver,
-      props.data,
-      prevProps.data
-    ))
+      isApiOutdatedWithData(
+        props.receiver,
+        prevProps.receiver,
+        props.data,
+        prevProps.data
+      ))
 })
 export class ImageControlRenderer extends ImageControl {}

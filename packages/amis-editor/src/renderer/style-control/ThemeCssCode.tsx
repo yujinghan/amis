@@ -3,7 +3,7 @@
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Button, Editor, Overlay, PopOver} from 'amis-ui';
-import {FormControlProps, FormItem, styleMap} from 'amis-core';
+import {FormControlProps, FormItem, styleMap, render} from 'amis-core';
 // @ts-ignore
 import {parse as cssParse} from 'amis-postcss';
 import {PlainObject} from './types';
@@ -36,21 +36,22 @@ interface CssNode {
 
 interface CssNodeTab {
   name: string;
+  key: string;
   children: CssNode[];
 }
 
-function AmisThemeCssCodeEditor(props: FormControlProps) {
-  const {themeClass, data} = props;
+export function AmisThemeCssCodeEditor(props: FormControlProps) {
+  const {themeClass, data, tabValue, isFromDomTree} = props;
   const id = data.id.replace('u:', '');
   const [cssNodes, setCssNodes] = useState<CssNodeTab[]>([]);
-  const [tabId, setTabId] = useState(0);
+  const [tabId, setTabId] = useState(tabValue || '');
   function getCssAndSetValue(themeClass: any[]) {
     try {
       const newCssNodes: CssNodeTab[] = [];
       themeClass?.forEach(n => {
-        const classId = n.value ? id + '-' + n.value : id;
+        const classId = n.extra ? id + '-' + n.extra : id;
         const state = n.state || ['default'];
-        const className = n.className || 'className';
+        const className = n.value || 'className';
         const dom = document.getElementById(classId || '') || null;
         const content = dom?.innerHTML || '';
         const ast = cssParse(content);
@@ -82,23 +83,47 @@ function AmisThemeCssCodeEditor(props: FormControlProps) {
             }
             return false;
           })!;
-          item.value = style.join('\n');
+          item && (item.value = style.join('\n'));
         });
 
         newCssNodes.push({
           name: n.name || '自定义样式',
+          key: n.value,
           children: css
         });
       });
       setCssNodes(newCssNodes);
+      !isFromDomTree && setTabId(newCssNodes[0]?.key);
     } catch (error) {
       console.error(error);
     }
   }
 
+  // 将树转化为一维数组
+  function flattenTree(tree: any, nodes: any[]) {
+    nodes.push(tree);
+    if (tree.children) {
+      tree.children.forEach((child: any) => {
+        flattenTree(child, nodes);
+      });
+    }
+  }
+
   useEffect(() => {
-    getCssAndSetValue(themeClass);
+    if (themeClass) {
+      let nodes: any[] = [];
+      themeClass.forEach((child: any) => {
+        flattenTree(child, nodes);
+      });
+      getCssAndSetValue(nodes);
+    }
   }, []);
+
+  useEffect(() => {
+    if (tabValue && tabValue !== tabId) {
+      setTabId(tabValue);
+    }
+  }, [tabValue]);
 
   const editorChange = debounce((nodeTabs: CssNodeTab[]) => {
     try {
@@ -201,23 +226,19 @@ function AmisThemeCssCodeEditor(props: FormControlProps) {
         </Button>
       </div>
       <div className="ThemeCssCode-editor-content">
-        <div className="ThemeCssCode-editor-content-header">
-          {cssNodes.map((node, index) => {
-            return (
-              <div
-                key={index}
-                onClick={() => setTabId(index)}
-                className={cx(
-                  'ThemeCssCode-editor-content-header-title',
-                  index === tabId &&
-                    'ThemeCssCode-editor-content-header-title--active'
-                )}
-              >
-                {node.name}
-              </div>
-            );
+        {!isFromDomTree &&
+          render({
+            type: 'tree-select',
+            label: '层级：',
+            mode: 'horizontal',
+            name: 'tree-select',
+            clearable: false,
+            options: themeClass,
+            value: tabId,
+            onChange: (value: string) => {
+              setTabId(value);
+            }
           })}
-        </div>
         <div className="ThemeCssCode-editor-content-main">
           {cssNodes.map((node, i) => {
             const children = node.children;
@@ -225,7 +246,8 @@ function AmisThemeCssCodeEditor(props: FormControlProps) {
               <div
                 key={i}
                 className={cx(
-                  i !== tabId && 'ThemeCssCode-editor-content-body--hidden'
+                  node.key !== tabId &&
+                    'ThemeCssCode-editor-content-body--hidden'
                 )}
               >
                 {children.map((css, j) => {
@@ -262,7 +284,7 @@ function AmisThemeCssCodeEditor(props: FormControlProps) {
   );
 }
 
-function AmisStyleCodeEditor(props: FormControlProps) {
+export function AmisStyleCodeEditor(props: FormControlProps) {
   const {data, onBulkChange} = props;
   const {style} = data;
   const [value, setValue] = useState('');
@@ -349,7 +371,7 @@ function AmisStyleCodeEditor(props: FormControlProps) {
   );
 }
 
-function ThemeCssCode(props: FormControlProps) {
+export default function ThemeCssCode(props: FormControlProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [showEditor, setShowEditor] = useState(false);
   function handleShowEditor() {
